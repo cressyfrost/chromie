@@ -1,5 +1,3 @@
-// Golang program to show how
-// to take input from the user
 package worldevents
 
 import (
@@ -8,15 +6,19 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
 
+var WorldEventSchedule = make(map[string]string)
+var m sync.RWMutex
+
 const (
-	// channelID   = "529930903556849698" // testing channel
-	channelID   = "790534093799555103" // testing channel
-	maxSchedule = 6                    // max posting sessions per day
+	channelID = "529930903556849698" // testing channel
+	// channelID   = "790534093799555103" // actual channel
+	maxSchedule = 6 // max posting sessions per day
 
 	// Iskaara Tuskarr Community Feast
 	WORLD_EVENT_FEAST = "feast"
@@ -29,10 +31,16 @@ const (
 	siegeMinute                  = 0
 )
 
+// GetNextEvents set the next time for feast and siege
+func GetNextEvents() map[string]string {
+	m.RLock()
+	defer m.RUnlock()
+	return WorldEventSchedule
+}
+
 // SetNextEvents set the next time for feast and siege
 func SetNextEvents() map[string]string {
-	m := make(map[string]string)
-
+	m.Lock()
 	// Manually set next Feast used for caluclations
 	fmt.Println("Specify the next Community Feast in HH:MM format: ")
 	var feast string
@@ -43,14 +51,14 @@ func SetNextEvents() map[string]string {
 	var siege string
 	fmt.Scanln(&siege)
 
-	m[WORLD_EVENT_FEAST] = feast
-	m[WORLD_EVENT_SIEGE_DRAGONBANE] = siege
-
-	return m
+	WorldEventSchedule[WORLD_EVENT_FEAST] = feast
+	WorldEventSchedule[WORLD_EVENT_SIEGE_DRAGONBANE] = siege
+	m.Unlock()
+	return WorldEventSchedule
 }
 
-// PostWorldEventSchedule posts the next x world events schedule
-func PostWorldEventSchedule(s *discordgo.Session, schedule map[string]string) {
+// PostInitialWorldEventSchedule posts the next x world events schedule
+func PostInitialWorldEventSchedule(s *discordgo.Session, schedule map[string]string) {
 	re := regexp.MustCompile(`^([0-9]|0[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9])$`)
 	ft := re.MatchString(schedule[WORLD_EVENT_FEAST])
 	st := re.MatchString(schedule[WORLD_EVENT_SIEGE_DRAGONBANE])
@@ -97,6 +105,59 @@ func PostWorldEventSchedule(s *discordgo.Session, schedule map[string]string) {
 	s.ChannelMessageSend(channelID, ":cook: **Community Feast** :cook: "+feasts+"\n")
 	s.ChannelMessageSend(channelID, ":european_castle: **Siege on the Dragonbane Keep** :european_castle: "+sieges)
 	s.ChannelMessageSend(channelID, footers)
+
+}
+
+// PostWorldEventSchedule posts the next x world events schedule
+func PostWorldEventSchedule(s *discordgo.Session, originChannelID string, worldEventType string) {
+	schedule := GetNextEvents()
+	if len(schedule[WORLD_EVENT_FEAST]) < 1 || len(schedule[WORLD_EVENT_SIEGE_DRAGONBANE]) < 1 {
+		return
+	}
+
+	// Construct Community Feast Schedule
+	f := strings.Split(schedule[WORLD_EVENT_FEAST], ":")
+	fs, err := constructSchedule(WORLD_EVENT_FEAST, f[0], f[1])
+	if err != nil {
+		postErrorSchedule(s, err)
+	}
+
+	// Construct Siege on the Dragonbane Keep Schedule
+	sg := strings.Split(schedule[WORLD_EVENT_SIEGE_DRAGONBANE], ":")
+	sgs, err := constructSchedule(WORLD_EVENT_SIEGE_DRAGONBANE, sg[0], sg[1])
+	if err != nil {
+		postErrorSchedule(s, err)
+	}
+
+	var feasts, sieges string
+	feasts = "\n```"
+	for _, v := range fs {
+		feasts += v + "\n"
+	}
+	feasts += "```"
+
+	sieges = "\n```"
+	for _, v := range sgs {
+		sieges += v + "\n"
+	}
+	sieges += "```"
+
+	var emote string
+	if strings.Contains(worldEventType, WORLD_EVENT_FEAST) {
+		emote = ":cook:"
+	} else if strings.Contains(worldEventType, WORLD_EVENT_SIEGE_DRAGONBANE) {
+		emote = ":european_castle:"
+	}
+
+	footers := "\n~~React on this message with " + emote + " _emote_ to get notified `10 Minutes Before` every session begins.~~ soon tm"
+
+	s.ChannelMessageSend(originChannelID, "Here is your requested schedule for today!")
+	if strings.Contains(worldEventType, WORLD_EVENT_FEAST) {
+		s.ChannelMessageSend(originChannelID, ":cook: **Community Feast** :cook: "+feasts+"\n")
+	} else if strings.Contains(worldEventType, WORLD_EVENT_SIEGE_DRAGONBANE) {
+		s.ChannelMessageSend(originChannelID, ":european_castle: **Siege on the Dragonbane Keep** :european_castle: "+sieges)
+	}
+	s.ChannelMessageSend(originChannelID, footers)
 
 }
 

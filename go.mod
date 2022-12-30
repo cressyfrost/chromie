@@ -5,6 +5,7 @@ go 1.18
 require github.com/bwmarrin/discordgo v0.26.1
 
 replace internal/worldevents => ././internal/worldevents
+replace internal/discord => ././internal/discord
 
 require (
 	github.com/gorilla/websocket v1.4.2 // indirect
