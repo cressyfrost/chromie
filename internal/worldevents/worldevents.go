@@ -12,98 +12,111 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var WorldEventSchedule = make(map[string]string)
+var WorldEventNextSchedule = make(map[string]string)
+var WorldEventSchedule = make(map[string][]string)
 var m sync.RWMutex
 
 const (
 	channelID = "529930903556849698" // testing channel
 	// channelID   = "790534093799555103" // actual channel
-	maxSchedule = 6 // max posting sessions per day
+	maxSchedule              = 6 // max posting sessions per day
+	NotificationsValueBefore = 10
+	NotificationsUnitBefore  = "Minutes"
 
 	// Iskaara Tuskarr Community Feast
-	WORLD_EVENT_FEAST = "feast"
-	feastHour         = 3
-	feastMinute       = 30
+	WORLD_EVENT_FEAST               = "feast"
+	WORLD_EVENT_FEAST_FULLNAME      = "Iskaara Tuskarr Community Feast"
+	WORLD_EVENT_FEAST_EMOTE         = ":cook:"
+	WORLD_EVENT_FEAST_EMOTE_UNICODE = "🧑‍🍳"
+	WORLD_EVENT_FEAST_HOUR          = 3
+	WORLD_EVENT_FEAST_MINUTE        = 30
 
 	// Siege on the Dragonbane Keep
-	WORLD_EVENT_SIEGE_DRAGONBANE = "siege"
-	siegeHour                    = 2
-	siegeMinute                  = 0
+	WORLD_EVENT_SIEGE_DRAGONBANE               = "siege"
+	WORLD_EVENT_SIEGE_DRAGONBANE_FULLNAME      = "Siege on the Dragonbane Keep"
+	WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE         = ":european_castle:"
+	WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE_UNICODE = "🏰"
+	WORLD_EVENT_SIEGE_DRAGONBANE_HOUR          = 2
+	WORLD_EVENT_SIEGE_DRAGONBANE_MINUTE        = 0
 )
 
 // GetNextEvents set the next time for feast and siege
 func GetNextEvents() map[string]string {
 	m.RLock()
 	defer m.RUnlock()
-	return WorldEventSchedule
+	return WorldEventNextSchedule
 }
 
 // SetNextEvents set the next time for feast and siege
-func SetNextEvents() map[string]string {
+func SetNextEvents(s *discordgo.Session) error {
 	m.Lock()
-	// Manually set next Feast used for caluclations
+	// Manually set next Feast used for calculations
 	fmt.Println("Specify the next Community Feast in HH:MM format: ")
 	var feast string
 	fmt.Scanln(&feast)
 
-	// Manually set next Siege used for caluclations
+	// Manually set next Siege used for calculations
 	fmt.Println("Specify the next Siege of the Dragonbane Keep in HH:MM format: ")
 	var siege string
 	fmt.Scanln(&siege)
 
-	WorldEventSchedule[WORLD_EVENT_FEAST] = feast
-	WorldEventSchedule[WORLD_EVENT_SIEGE_DRAGONBANE] = siege
-	m.Unlock()
-	return WorldEventSchedule
-}
-
-// PostInitialWorldEventSchedule posts the next x world events schedule
-func PostInitialWorldEventSchedule(s *discordgo.Session, schedule map[string]string) {
 	re := regexp.MustCompile(`^([0-9]|0[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9])$`)
-	ft := re.MatchString(schedule[WORLD_EVENT_FEAST])
-	st := re.MatchString(schedule[WORLD_EVENT_SIEGE_DRAGONBANE])
+	ft := re.MatchString(feast)
+	st := re.MatchString(siege)
 	if !ft {
-		postErrorSchedule(s, errors.New("invalid manually set next Feast time ("+schedule[WORLD_EVENT_FEAST]+")"))
-		return
+		err := errors.New("invalid manually set next Feast time (" + feast + ")")
+		postErrorSchedule(s, err)
+		return err
 	}
 
 	if !st {
-		postErrorSchedule(s, errors.New("invalid manually set next Siege time("+schedule[WORLD_EVENT_SIEGE_DRAGONBANE]+")"))
-		return
-	}
-
-	// Construct Community Feast Schedule
-	f := strings.Split(schedule[WORLD_EVENT_FEAST], ":")
-	fs, err := constructSchedule(WORLD_EVENT_FEAST, f[0], f[1])
-	if err != nil {
+		err := errors.New("invalid manually set next Siege time(" + siege + ")")
 		postErrorSchedule(s, err)
+		return err
 	}
 
-	// Construct Siege on the Dragonbane Keep Schedule
-	sg := strings.Split(schedule[WORLD_EVENT_SIEGE_DRAGONBANE], ":")
-	sgs, err := constructSchedule(WORLD_EVENT_SIEGE_DRAGONBANE, sg[0], sg[1])
-	if err != nil {
-		postErrorSchedule(s, err)
-	}
+	WorldEventNextSchedule[WORLD_EVENT_FEAST] = feast
+	WorldEventNextSchedule[WORLD_EVENT_SIEGE_DRAGONBANE] = siege
+	m.Unlock()
+	return nil
+}
 
+// GetNextEvents set the next time for feast and siege
+func GetWorldEventSchedule() map[string][]string {
+	m.RLock()
+	defer m.RUnlock()
+	return WorldEventSchedule
+}
+
+// SetNextEvents set the next time for feast and siege
+func SetWorldEventSchedule(worldEventType string, clean []string, raw []string) {
+	m.Lock()
+	WorldEventSchedule[worldEventType] = clean
+	WorldEventSchedule[worldEventType+"-raw"] = raw
+	m.Unlock()
+}
+
+// PostInitialWorldEventSchedule posts the next x world events schedule
+func PostInitialWorldEventSchedule(s *discordgo.Session) {
 	var feasts, sieges string
 	feasts = "\n```"
-	for _, v := range fs {
+	for _, v := range GetWorldEventSchedule()[WORLD_EVENT_FEAST] {
 		feasts += v + "\n"
 	}
 	feasts += "```"
 
 	sieges = "\n```"
-	for _, v := range sgs {
+	for _, v := range GetWorldEventSchedule()[WORLD_EVENT_SIEGE_DRAGONBANE] {
 		sieges += v + "\n"
 	}
 	sieges += "```"
 
-	footers := "\n~~React on this message with  :cook: and :european_castle: _emote_ to get notified `10 Minutes Before` every session begins.~~ soon tm"
+	footers := "\nReact on this message with  " + WORLD_EVENT_FEAST_EMOTE + " and " + WORLD_EVENT_SIEGE_DRAGONBANE + " _emote_ to get notified `10 Minutes Before` every session begins."
 
 	s.ChannelMessageSend(channelID, "Hello, Champions. Here is the **World Events** schedule for today!")
-	s.ChannelMessageSend(channelID, ":cook: **Community Feast** :cook: "+feasts+"\n")
-	s.ChannelMessageSend(channelID, ":european_castle: **Siege on the Dragonbane Keep** :european_castle: "+sieges)
+	s.ChannelMessageSend(channelID, "To display this later, type the `/chromie` command")
+	s.ChannelMessageSend(channelID, WORLD_EVENT_FEAST_EMOTE+" **Community Feast** "+WORLD_EVENT_FEAST_EMOTE+" "+feasts+"\n")
+	s.ChannelMessageSend(channelID, WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE+" **Siege on the Dragonbane Keep** "+WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE+" "+sieges)
 	s.ChannelMessageSend(channelID, footers)
 
 }
@@ -115,82 +128,95 @@ func PostWorldEventSchedule(s *discordgo.Session, originChannelID string, worldE
 		return
 	}
 
-	// Construct Community Feast Schedule
-	f := strings.Split(schedule[WORLD_EVENT_FEAST], ":")
-	fs, err := constructSchedule(WORLD_EVENT_FEAST, f[0], f[1])
-	if err != nil {
-		postErrorSchedule(s, err)
-	}
-
-	// Construct Siege on the Dragonbane Keep Schedule
-	sg := strings.Split(schedule[WORLD_EVENT_SIEGE_DRAGONBANE], ":")
-	sgs, err := constructSchedule(WORLD_EVENT_SIEGE_DRAGONBANE, sg[0], sg[1])
-	if err != nil {
-		postErrorSchedule(s, err)
-	}
-
 	var feasts, sieges string
 	feasts = "\n```"
-	for _, v := range fs {
+	for _, v := range WorldEventSchedule[WORLD_EVENT_FEAST] {
 		feasts += v + "\n"
 	}
 	feasts += "```"
 
 	sieges = "\n```"
-	for _, v := range sgs {
+	for _, v := range WorldEventSchedule[WORLD_EVENT_SIEGE_DRAGONBANE] {
 		sieges += v + "\n"
 	}
 	sieges += "```"
 
 	var emote string
 	if strings.Contains(worldEventType, WORLD_EVENT_FEAST) {
-		emote = ":cook:"
+		emote = WORLD_EVENT_FEAST_EMOTE
 	} else if strings.Contains(worldEventType, WORLD_EVENT_SIEGE_DRAGONBANE) {
-		emote = ":european_castle:"
+		emote = WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE
 	}
 
-	footers := "\n~~React on this message with " + emote + " _emote_ to get notified `10 Minutes Before` every session begins.~~ soon tm"
+	footers := "\nReact on this message with " + emote + " _emote_ to get notified `10 Minutes Before` every session begins."
 
 	s.ChannelMessageSend(originChannelID, "Here is your requested schedule for today!")
 	if strings.Contains(worldEventType, WORLD_EVENT_FEAST) {
-		s.ChannelMessageSend(originChannelID, ":cook: **Community Feast** :cook: "+feasts+"\n")
+		s.ChannelMessageSend(originChannelID, WORLD_EVENT_FEAST_EMOTE+" **Community Feast** "+WORLD_EVENT_FEAST_EMOTE+" "+feasts+"\n")
 	} else if strings.Contains(worldEventType, WORLD_EVENT_SIEGE_DRAGONBANE) {
-		s.ChannelMessageSend(originChannelID, ":european_castle: **Siege on the Dragonbane Keep** :european_castle: "+sieges)
+		s.ChannelMessageSend(originChannelID, WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE+" **Siege on the Dragonbane Keep** "+WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE+" "+sieges)
 	}
 	s.ChannelMessageSend(originChannelID, footers)
 
 }
 
-func constructSchedule(worldEventType string, hours string, minutes string) (schedule []string, err error) {
-	h, err := strconv.ParseInt(hours, 10, 64)
-	if err != nil {
-		return nil, err
+// PostWorldEventReminder posts the next x world events schedule to each subscribers
+func PostWorldEventReminder(s *discordgo.Session, worldEventType string) {
+	var headers, emote, footers string
+	if worldEventType == WORLD_EVENT_FEAST {
+		headers = WORLD_EVENT_FEAST_FULLNAME
+		emote = WORLD_EVENT_FEAST_EMOTE
+		subscribers := GetWorldEventSubscribers()
+		for _, v := range subscribers[WORLD_EVENT_FEAST] {
+			footers += "<@" + v + "> "
+		}
+
+	} else if worldEventType == WORLD_EVENT_SIEGE_DRAGONBANE {
+		headers = WORLD_EVENT_SIEGE_DRAGONBANE_FULLNAME
+		emote = WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE
+		subscribers := GetWorldEventSubscribers()
+		for _, v := range subscribers[WORLD_EVENT_SIEGE_DRAGONBANE] {
+			footers += "<@" + v + "> "
+		}
 	}
 
-	m, err := strconv.ParseInt(minutes, 10, 64)
+	s.ChannelMessageSend(channelID, emote+" **"+headers+"** is starting in **"+strconv.Itoa(NotificationsValueBefore)+" "+NotificationsUnitBefore+"**! "+emote)
+	s.ChannelMessageSend(channelID, footers)
+
+}
+
+func ConstructSchedule(worldEventType string) (clean []string, raw []string, err error) {
+	sch := GetNextEvents()[worldEventType]
+	f := strings.Split(sch, ":")
+
+	h, err := strconv.ParseInt(f[0], 10, 64)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	m, err := strconv.ParseInt(f[1], 10, 64)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	timein := time.Now().Local()
 	for i := 0; i < maxSchedule; i++ {
 
 		if i == 0 {
-			// log.Println(timein.Format("15:04 WIB"))
 			timein = timein.Add(time.Hour*time.Duration(h) + time.Minute*time.Duration(m))
-			// log.Println(timein.Format("15:04 WIB"))
 		} else {
 			if worldEventType == WORLD_EVENT_FEAST {
-				timein = timein.Add(time.Hour*time.Duration(feastHour) + time.Minute*time.Duration(feastMinute))
+				timein = timein.Add(time.Hour*time.Duration(WORLD_EVENT_FEAST_HOUR) + time.Minute*time.Duration(WORLD_EVENT_FEAST_MINUTE))
 			} else if worldEventType == WORLD_EVENT_SIEGE_DRAGONBANE {
-				timein = timein.Add(time.Hour*time.Duration(siegeHour) + time.Minute*time.Duration(siegeMinute))
+				timein = timein.Add(time.Hour*time.Duration(WORLD_EVENT_SIEGE_DRAGONBANE_HOUR) + time.Minute*time.Duration(WORLD_EVENT_SIEGE_DRAGONBANE_MINUTE))
 			}
 		}
 
-		schedule = append(schedule, timein.Format("15:04 WIB"))
-		// log.Println(timein.Format("15:04 WIB"))
+		clean = append(clean, timein.Format("15:04 WIB"))
+		raw = append(raw, timein.Format(time.UnixDate))
 	}
-	// log.Println(schedule)
+
+	SetWorldEventSchedule(worldEventType, clean, raw)
 	return
 }
 

@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"cressyfrost/chromie/internal/cron"
 	"cressyfrost/chromie/internal/discord"
 	"cressyfrost/chromie/internal/worldevents"
 
@@ -28,6 +29,7 @@ func init() {
 			log.Fatalf("error getting discord client token")
 		}
 	}
+
 }
 
 func main() {
@@ -39,6 +41,12 @@ func main() {
 
 	// Register the messageCreate func as a callback for MessageCreate events.
 	discordClient.AddHandler(discord.MessageCreate)
+
+	// Register the EventTriggered func as a callback for ReactionAdded events.
+	discordClient.AddHandler(discord.ReactionAdded)
+
+	// Register the EventTriggered func as a callback for ReactionRemoved events.
+	discordClient.AddHandler(discord.ReactionRemoved)
 
 	// Register the slash commands handler
 	discordClient.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -70,7 +78,16 @@ func main() {
 	// In this example, we only care about receiving message events.
 	discordClient.Identify.Intents = discordgo.IntentsGuildMessages
 
-	worldevents.PostInitialWorldEventSchedule(discordClient, worldevents.SetNextEvents())
+	// Run the initial schedule setup and register it as cron
+	err = worldevents.SetNextEvents(discordClient)
+	if err != nil {
+		log.Fatalf("Invalid World Events schedule: %v", err)
+	}
+
+	worldevents.ConstructSchedule(worldevents.WORLD_EVENT_FEAST)
+	worldevents.ConstructSchedule(worldevents.WORLD_EVENT_SIEGE_DRAGONBANE)
+	cron.Run(discordClient)
+	worldevents.PostInitialWorldEventSchedule(discordClient)
 
 	// Wait here until CTRL-C or other term signal is received.
 	fmt.Println("Chromie is now running on this timeline.  Press CTRL-C to exit.")
