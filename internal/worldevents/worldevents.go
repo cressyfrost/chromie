@@ -17,9 +17,9 @@ var WorldEventSchedule = make(map[string][]string)
 var m sync.RWMutex
 
 const (
-	channelID = "529930903556849698" // testing channel
-	// channelID   = "790534093799555103" // actual channel
-	maxSchedule              = 6 // max posting sessions per day
+	// channelID = "529930903556849698" // testing channel
+	channelID                = "790534093799555103" // actual channel
+	maxSchedule              = 6                    // max posting sessions per day
 	NotificationsValueBefore = 10
 	NotificationsUnitBefore  = "Minutes"
 
@@ -111,7 +111,7 @@ func PostInitialWorldEventSchedule(s *discordgo.Session) {
 	}
 	sieges += "```"
 
-	footers := "\nReact on this message with  " + WORLD_EVENT_FEAST_EMOTE + " and " + WORLD_EVENT_SIEGE_DRAGONBANE + " _emote_ to get notified `10 Minutes Before` every session begins."
+	footers := "\nReact on this message with  " + WORLD_EVENT_FEAST_EMOTE + " and " + WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE + " _emote_ to get notified `10 Minutes Before` every session begins."
 
 	s.ChannelMessageSend(channelID, "Hello, Champions. Here is the **World Events** schedule for today!")
 	s.ChannelMessageSend(channelID, "To display this later, type the `/chromie` command")
