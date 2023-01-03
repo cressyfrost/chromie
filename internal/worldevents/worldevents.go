@@ -17,9 +17,9 @@ var WorldEventSchedule = make(map[string][]string)
 var m sync.RWMutex
 
 const (
-	// channelID = "529930903556849698" // testing channel
-	channelID                = "790534093799555103" // actual channel
-	maxSchedule              = 6                    // max posting sessions per day
+	channelID = "529930903556849698" // testing channel
+	// channelID                = "790534093799555103" // actual channel
+	maxSchedule              = 6 // max posting sessions per day
 	NotificationsValueBefore = 10
 	NotificationsUnitBefore  = "Minutes"
 
@@ -40,7 +40,7 @@ const (
 	WORLD_EVENT_SIEGE_DRAGONBANE_MINUTE        = 0
 )
 
-// GetNextEvents set the next time for feast and siege
+// GetNextEvents get the next time for feast and siege
 func GetNextEvents() map[string]string {
 	m.RLock()
 	defer m.RUnlock()
@@ -93,6 +93,22 @@ func SetWorldEventSchedule(worldEventType string, clean []string, raw []string) 
 	m.Lock()
 	WorldEventSchedule[worldEventType] = clean
 	WorldEventSchedule[worldEventType+"-raw"] = raw
+	m.Unlock()
+}
+
+// PopWorldEventSchedule pops the FIRST schedule
+func PopFirstWorldEventSchedule(worldEventType string) {
+	m.Lock()
+	WorldEventSchedule[worldEventType] = WorldEventSchedule[worldEventType][:0+copy(WorldEventSchedule[worldEventType][0:], WorldEventSchedule[worldEventType][0+1:])]
+	WorldEventSchedule[worldEventType+"-raw"] = WorldEventSchedule[worldEventType+"-raw"][:0+copy(WorldEventSchedule[worldEventType+"-raw"][0:], WorldEventSchedule[worldEventType+"-raw"][0+1:])]
+	m.Unlock()
+}
+
+// SetNextEvents set the next time for feast and siege
+func PushWorldEventSchedule(worldEventType string, clean string, raw string) {
+	m.Lock()
+	WorldEventSchedule[worldEventType] = append(WorldEventSchedule[worldEventType], clean)
+	WorldEventSchedule[worldEventType+"-raw"] = append(WorldEventSchedule[worldEventType+"-raw"], raw)
 	m.Unlock()
 }
 
@@ -182,7 +198,6 @@ func PostWorldEventReminder(s *discordgo.Session, worldEventType string) {
 
 	s.ChannelMessageSend(channelID, emote+" **"+headers+"** is starting in **"+strconv.Itoa(NotificationsValueBefore)+" "+NotificationsUnitBefore+"**! "+emote)
 	s.ChannelMessageSend(channelID, footers)
-
 }
 
 func ConstructSchedule(worldEventType string) (clean []string, raw []string, err error) {
@@ -218,6 +233,13 @@ func ConstructSchedule(worldEventType string) (clean []string, raw []string, err
 
 	SetWorldEventSchedule(worldEventType, clean, raw)
 	return
+}
+
+func UpdateSchedule(worldEventType string, nextTime time.Time) {
+	clean := nextTime.Format("15:04 WIB")
+	raw := nextTime.Format(time.UnixDate)
+	PopFirstWorldEventSchedule(worldEventType)
+	PushWorldEventSchedule(worldEventType, clean, raw)
 }
 
 func postErrorSchedule(s *discordgo.Session, err error) {

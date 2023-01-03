@@ -77,5 +77,5 @@ var (
 
 func generateResponse(s *discordgo.Session, channelID string, msg string) string {
 	worldevents.PostWorldEventSchedule(s, channelID, msg)
-	return "As you wish."
+	return "Yes, Chef!"
 }
