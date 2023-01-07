@@ -77,6 +77,9 @@ func main() {
 
 	// In this example, we only care about receiving message events.
 	discordClient.Identify.Intents = discordgo.IntentsGuildMessages
+	discordClient.UpdateListeningStatus("Yes, Chef!")
+
+	discordClient.Identify.Presence.Status = string(discordgo.StatusOnline)
 
 	// Run the initial schedule setup and register it as cron
 	err = worldevents.SetNextEvents(discordClient)
@@ -97,10 +100,6 @@ func main() {
 
 	if *discord.RemoveCommands {
 		log.Println("Removing commands...")
-		// // We need to fetch the commands, since deleting requires the command ID.
-		// // We are doing this from the returned commands on line 375, because using
-		// // this will delete all the commands, which might not be desirable, so we
-		// // are deleting only the commands that we added.
 		registeredCommands, err := discordClient.ApplicationCommands(discordClient.State.User.ID, *discord.GuildID)
 		if err != nil {
 			log.Fatalf("Could not fetch registered commands: %v", err)
