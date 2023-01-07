@@ -18,9 +18,9 @@ var WorldEventSchedule = make(map[string][]string)
 var m sync.RWMutex
 
 const (
-	channelID = "529930903556849698" // testing channel
-	// channelID                = "790534093799555103" // actual channel
-	maxSchedule              = 6 // max posting sessions per day
+	// channelID = "529930903556849698" // testing channel
+	channelID                = "790534093799555103" // actual channel
+	maxSchedule              = 6                    // max posting sessions per day
 	NotificationsValueBefore = 10
 	NotificationsUnitBefore  = "Minutes"
 
@@ -146,10 +146,35 @@ func PostInitialWorldEventSchedule(s *discordgo.Session) {
 
 	footers := "\nReact on this message with  " + WORLD_EVENT_FEAST_EMOTE + " and " + WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE + " _emote_ to get notified `10 Minutes Before` every session begins. Unreact to unsubscribe."
 
-	s.ChannelMessageSend(channelID, "Hello, Champions. Here is the **World Events** schedule for today!")
+	s.ChannelMessageSend(channelID, "Hello, Chefs. Here is the **World Events** schedule for today!")
 	s.ChannelMessageSend(channelID, "To display this later, type the `/chromie` command")
 	s.ChannelMessageSend(channelID, WORLD_EVENT_FEAST_EMOTE+" **"+WORLD_EVENT_FEAST_FULLNAME+"** "+WORLD_EVENT_FEAST_EMOTE+" "+feasts+"\n")
-	s.ChannelMessageSend(channelID, WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE+"**"+WORLD_EVENT_SIEGE_DRAGONBANE_FULLNAME+"**"+WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE+" "+sieges)
+	s.ChannelMessageSend(channelID, WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE+" **"+WORLD_EVENT_SIEGE_DRAGONBANE_FULLNAME+"** "+WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE+" "+sieges)
+	s.ChannelMessageSend(channelID, footers)
+
+}
+
+// PostDailyWorldEventSchedule posts daily world events schedule
+func PostDailyWorldEventSchedule(s *discordgo.Session) {
+	var feasts, sieges string
+	feasts = "\n```"
+	for _, v := range generateSchedule(WORLD_EVENT_FEAST) {
+		feasts += v + "\n"
+	}
+	feasts += "```"
+
+	sieges = "\n```"
+	for _, v := range generateSchedule(WORLD_EVENT_SIEGE_DRAGONBANE) {
+		sieges += v + "\n"
+	}
+	sieges += "```"
+
+	footers := "\nReact on this message with  " + WORLD_EVENT_FEAST_EMOTE + " and " + WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE + " _emote_ to get notified `10 Minutes Before` every session begins. Unreact to unsubscribe."
+
+	s.ChannelMessageSend(channelID, "Good Morning, Chefs. Here is the **World Events** schedule for today!")
+	s.ChannelMessageSend(channelID, "To display this later, type the `/chromie` command")
+	s.ChannelMessageSend(channelID, WORLD_EVENT_FEAST_EMOTE+" **"+WORLD_EVENT_FEAST_FULLNAME+"** "+WORLD_EVENT_FEAST_EMOTE+" "+feasts+"\n")
+	s.ChannelMessageSend(channelID, WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE+" **"+WORLD_EVENT_SIEGE_DRAGONBANE_FULLNAME+"** "+WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE+" "+sieges)
 	s.ChannelMessageSend(channelID, footers)
 
 }

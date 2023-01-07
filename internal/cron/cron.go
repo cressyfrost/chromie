@@ -58,6 +58,12 @@ func Run(s *discordgo.Session) {
 		c.Start()
 	}
 
+	// daily notifications every morning 9AM WIB
+	c.AddFunc("0 9 * * *", func() {
+		worldevents.PostDailyWorldEventSchedule(s)
+	})
+	c.Start()
+
 }
 
 func postReminder(s *discordgo.Session, worldEventType string) {
