@@ -60,6 +60,7 @@ func Run(s *discordgo.Session) {
 
 	// daily notifications every morning 9AM WIB
 	c.AddFunc("0 9 * * *", func() {
+		log.Println("[Daily/Morning] Cron executed 0 9 * * *")
 		worldevents.PostDailyWorldEventSchedule(s)
 	})
 	c.Start()

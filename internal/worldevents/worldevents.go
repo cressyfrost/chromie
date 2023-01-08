@@ -19,7 +19,8 @@ var m sync.RWMutex
 
 const (
 	// channelID = "529930903556849698" // testing channel
-	channelID                = "790534093799555103" // actual channel
+	// channelID                = "790534093799555103" // general channel
+	channelID                = "790502983187169320" // bot-spam channel
 	maxSchedule              = 6                    // max posting sessions per day
 	NotificationsValueBefore = 10
 	NotificationsUnitBefore  = "Minutes"
