@@ -70,9 +70,13 @@ func Run(s *discordgo.Session) {
 func postReminder(s *discordgo.Session, worldEventType string) {
 	we := worldEventType
 	t := time.Now()
-	log.Println("fixed time before: " + worldevents.GetFixedEventSchedule(we).String())
+	// log.Println("fixed time before: " + worldevents.GetFixedEventSchedule(we).String())
+
+	// add 10 minutes and "cache" the new time for faster calculations
+	t = t.Add(time.Minute * time.Duration(worldevents.NotificationsValueBefore))
 	worldevents.SetFixedEventSchedule(we, t)
-	log.Println("fixed time after: " + worldevents.GetFixedEventSchedule(we).String())
+	// log.Println("fixed time after: " + worldevents.GetFixedEventSchedule(we).String())
+
 	worldevents.PostWorldEventReminder(s, we)
 }
 
