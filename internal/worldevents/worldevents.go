@@ -29,7 +29,7 @@ const (
 	WORLD_EVENT_FEAST_FULLNAME      = "Iskaara Tuskarr Community Feast"
 	WORLD_EVENT_FEAST_EMOTE         = ":cook:"
 	WORLD_EVENT_FEAST_EMOTE_UNICODE = "🧑‍🍳"
-	WORLD_EVENT_FEAST_HOUR          = 3
+	WORLD_EVENT_FEAST_HOUR          = 1
 	WORLD_EVENT_FEAST_MINUTE        = 30
 
 	// Siege on the Dragonbane Keep
