@@ -2,6 +2,7 @@ package discord
 
 import (
 	"cressyfrost/chromie/internal/worldevents"
+	"log"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -20,8 +21,10 @@ func ReactionAdded(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
 		worldevents.SetWorldEventSubscribers(worldevents.WORLD_EVENT_SIEGE_DRAGONBANE, r.Member.User.ID)
 	}
 
-	// log.Println(worldevents.GetWorldEventSubscribers())
-	// s.ChannelMessageSend(r.ChannelID, "<@"+r.Member.User.ID+"> reacted with: "+r.Emoji.ID+" -> `"+r.Emoji.Name+"`")
+	log.Println("Reaction Added Debug")
+	log.Println("<@" + r.Member.User.ID + "> reacted with: " + r.Emoji.ID + " -> `" + r.Emoji.Name + "`")
+	log.Println(worldevents.GetWorldEventSubscribers())
+
 }
 
 // This function will be called (due to AddHandler above) every time reaction is added
@@ -37,5 +40,9 @@ func ReactionRemoved(s *discordgo.Session, r *discordgo.MessageReactionRemove) {
 	} else if r.MessageReaction.Emoji.Name == worldevents.WORLD_EVENT_SIEGE_DRAGONBANE_EMOTE_UNICODE {
 		worldevents.UnsetWorldEventSubscribers(worldevents.WORLD_EVENT_SIEGE_DRAGONBANE, r.MessageReaction.UserID)
 	}
+
+	log.Println("Reaction Removed Debug")
+	log.Println("<@" + r.MessageReaction.UserID + "> reacted with: " + "n/a" + " -> `" + r.MessageReaction.Emoji.Name + "`")
+	log.Println(worldevents.GetWorldEventSubscribers())
 
 }

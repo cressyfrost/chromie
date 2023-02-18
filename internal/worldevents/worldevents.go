@@ -3,6 +3,7 @@ package worldevents
 import (
 	"errors"
 	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -270,6 +271,9 @@ func PostWorldEventReminder(s *discordgo.Session, worldEventType string) {
 			footers += "<@" + v + "> "
 		}
 	}
+
+	log.Println("subList:")
+	log.Println(footers)
 
 	s.ChannelMessageSend(channelID, emote+" **"+headers+"** is starting in **"+strconv.Itoa(NotificationsValueBefore)+" "+NotificationsUnitBefore+"**! "+emote)
 	s.ChannelMessageSend(channelID, footers)
